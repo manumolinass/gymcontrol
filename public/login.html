@@ -1,0 +1,33 @@
+<!DOCTYPE html>
+<html lang="es"><head><meta charset="UTF-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+<title>GymControl - Acceso administrador</title><link rel="stylesheet" href="style.css"></head>
+<body>
+<header><h1>🏋️ GymControl</h1><a href="index.html">← Recepción</a></header>
+<div class="centro card">
+  <h2 id="titulo">Iniciar sesión</h2>
+  <p id="aviso" class="hidden">No hay administradores registrados. Creá la primera cuenta para continuar.</p>
+  <input id="usuario" placeholder="Usuario" style="font-size:1rem">
+  <input id="password" type="password" placeholder="Contraseña (mín. 6 caracteres)" style="font-size:1rem">
+  <p id="error" class="err"></p>
+  <button id="btn">Ingresar</button>
+</div>
+<script>
+let modoRegistro = false;
+const $ = id => document.getElementById(id);
+fetch('/api/auth/estado').then(r => r.json()).then(e => {
+  if (e.logueado) return location.href = 'admin.html';
+  if (!e.hayAdmins) {
+    modoRegistro = true;
+    $('titulo').textContent = 'Crear administrador';
+    $('aviso').classList.remove('hidden'); $('btn').textContent = 'Registrar y entrar';
+  }
+});
+$('btn').onclick = async () => {
+  const r = await fetch(modoRegistro ? '/api/auth/registro' : '/api/auth/login', {
+    method: 'POST', headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ usuario: $('usuario').value, password: $('password').value }) });
+  const d = await r.json();
+  if (d.ok) location.href = 'admin.html'; else $('error').textContent = d.error;
+};
+$('password').addEventListener('keydown', e => e.key === 'Enter' && $('btn').click());
+</script></body></html>

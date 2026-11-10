@@ -1,0 +1,32 @@
+*{box-sizing:border-box}
+body{margin:0;font-family:system-ui,Segoe UI,Arial,sans-serif;background:#0f172a;color:#e2e8f0}
+a{color:#38bdf8}
+header{display:flex;justify-content:space-between;align-items:center;padding:14px 24px;background:#1e293b}
+header h1{margin:0;font-size:1.2rem}
+main{max-width:1000px;margin:24px auto;padding:0 16px}
+.card{background:#1e293b;border-radius:12px;padding:20px;margin-bottom:20px}
+input{padding:10px;border-radius:8px;border:1px solid #475569;background:#0f172a;color:#fff;font-size:1rem}
+button,.btn{padding:10px 16px;border:0;border-radius:8px;background:#0ea5e9;color:#fff;font-size:.95rem;cursor:pointer;text-decoration:none;display:inline-block}
+button.sec{background:#475569}button.ok{background:#16a34a}button.mal{background:#dc2626}
+.form-row{display:flex;gap:8px;flex-wrap:wrap}.form-row input{flex:1;min-width:140px}
+table{width:100%;border-collapse:collapse}
+th,td{text-align:left;padding:8px;border-bottom:1px solid #334155;font-size:.9rem}
+td button,td .btn{padding:5px 9px;font-size:.8rem;margin:1px}
+.tabs{display:flex;gap:8px;margin-bottom:16px}.tabs button.activa{background:#6366f1}
+.hidden{display:none}
+.stats{display:grid;grid-template-columns:repeat(auto-fit,minmax(180px,1fr));gap:12px;margin-bottom:20px}
+.stat{background:#1e293b;border-radius:12px;padding:16px;text-align:center}
+.stat b{display:block;font-size:2rem;color:#38bdf8}
+.barra{display:flex;align-items:center;gap:8px;margin:4px 0}
+.barra span.b{background:#6366f1;height:18px;border-radius:4px;display:inline-block}
+.tag{padding:2px 8px;border-radius:99px;font-size:.78rem}
+.tag.ok{background:#14532d}.tag.mal{background:#7f1d1d}
+/* Recepción */
+.centro{max-width:520px;margin:60px auto;text-align:center}
+.centro input{width:100%;font-size:1.6rem;text-align:center;margin:14px 0}
+.centro button{width:100%;font-size:1.2rem}
+#resultado{margin-top:20px;padding:20px;border-radius:12px;font-size:1.05rem}
+#resultado.ok{background:#14532d;border:2px solid #22c55e}
+#resultado.mal{background:#7f1d1d;border:2px solid #ef4444}
+#resultado h2{margin:0 0 8px}
+.err{color:#fca5a5;min-height:1.2em}

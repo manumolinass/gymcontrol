@@ -1,0 +1,132 @@
+<!DOCTYPE html>
+<html lang="es"><head><meta charset="UTF-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+<title>GymControl - Panel</title><link rel="stylesheet" href="style.css"></head>
+<body>
+<header><h1>🏋️ GymControl - Panel</h1>
+  <div><a href="index.html">Recepción</a> <button class="sec" onclick="salir()">Salir</button></div></header>
+<main>
+  <div class="tabs">
+    <button id="t-clientes" class="activa" onclick="tab('clientes')">Socios</button>
+    <button id="t-stats" onclick="tab('stats')">Estadísticas</button>
+    <button id="t-admin" onclick="tab('admin')">Administradores</button>
+  </div>
+
+  <section id="clientes">
+    <div class="card">
+      <h3 id="formTitulo">Alta de socio</h3>
+      <div class="form-row">
+        <input id="dni" placeholder="DNI" inputmode="numeric" maxlength="10">
+        <input id="nombre" placeholder="Nombre">
+        <input id="apellido" placeholder="Apellido">
+        <input id="celular" placeholder="Celular c/ código país (Ej: 5492995123456)">
+      </div>
+      <p id="msg" class="err"></p>
+      <button id="guardar" onclick="guardar()">Guardar</button>
+      <button class="sec hidden" id="cancelar" onclick="limpiar()">Cancelar edición</button>
+    </div>
+    <div class="card">
+      <input id="buscar" placeholder="Buscar por DNI, nombre o apellido..." style="width:100%;margin-bottom:10px" oninput="pintar()">
+      <div style="overflow-x:auto"><table><thead><tr><th>DNI</th><th>Socio</th><th>Celular</th><th>Último pago</th><th>Vence</th><th>Cuota</th><th>Acciones</th></tr></thead>
+      <tbody id="tbody"></tbody></table></div>
+    </div>
+  </section>
+
+  <section id="stats" class="hidden">
+    <div class="stats">
+      <div class="stat"><b id="sHoy">0</b>Ingresos de hoy</div>
+      <div class="stat"><b id="sMes">0</b>Ingresos del mes</div>
+      <div class="stat"><b id="sUnicos">0</b>Socios únicos</div>
+    </div>
+    <div class="card"><h3>Horarios pico</h3><div id="pico"></div></div>
+    <div class="card"><h3>Socios inactivos (más de 15 días)</h3>
+      <table><thead><tr><th>Socio</th><th>Último ingreso</th><th>Contacto</th></tr></thead><tbody id="inactivos"></tbody></table></div>
+    <div class="card"><h3>Frecuencia de asistencia</h3>
+      <table><thead><tr><th>Socio</th><th>Visitas del mes</th><th>Promedio por semana</th></tr></thead><tbody id="frecuencia"></tbody></table></div>
+  </section>
+
+  <section id="admin" class="hidden">
+    <div class="card"><h3>Crear nuevo administrador</h3>
+      <div class="form-row"><input id="nuevoUsuario" placeholder="Usuario"><input id="nuevoPass" type="password" placeholder="Contraseña (mín. 6)"></div>
+      <p id="msgAdmin" class="err"></p><button onclick="crearAdmin()">Crear</button></div>
+  </section>
+</main>
+<script>
+const $ = id => document.getElementById(id);
+const esc = s => String(s ?? '').replace(/[&<>"']/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
+const fecha = iso => iso ? iso.split('-').reverse().join('/') : 'Nunca';
+const api = async (url, method = 'GET', body) => {
+  const r = await fetch(url, { method, headers: { 'Content-Type': 'application/json' }, body: body ? JSON.stringify(body) : undefined });
+  if (r.status === 401) location.href = 'login.html';
+  return r.json();
+};
+const wa = (c, texto) => {
+  let n = c.celular.replace(/\D/g, '').replace(/^0+/, '');
+  if (!n.startsWith('54')) n = '54' + n;
+  return `https://wa.me/${n}?text=${encodeURIComponent(texto)}`;
+};
+let clientes = [], editId = null;
+
+function tab(n) {
+  ['clientes', 'stats', 'admin'].forEach(t => {
+    $(t).classList.toggle('hidden', t !== n);
+    $('t-' + t).classList.toggle('activa', t === n);
+  });
+  if (n === 'stats') cargarStats();
+}
+async function salir() { await api('/api/auth/logout', 'POST'); location.href = 'login.html'; }
+
+async function cargar() { clientes = await api('/api/clientes'); pintar(); }
+function pintar() {
+  const q = $('buscar').value.toLowerCase();
+  $('tbody').innerHTML = clientes
+    .filter(c => (c.dni + c.nombre + c.apellido).toLowerCase().includes(q))
+    .map(c => {
+      const msj = `Hola ${c.nombre}! Te recordamos que tu cuota del gimnasio ${c.alDia ? 'vence' : 'venció'} el ${fecha(c.fecha_vencimiento)}. ¡Te esperamos!`;
+      return `<tr><td>${esc(c.dni)}</td><td>${esc(c.apellido)}, ${esc(c.nombre)}</td><td>${esc(c.celular)}</td>
+        <td>${fecha(c.fecha_ultimo_pago)}</td><td>${fecha(c.fecha_vencimiento)}</td>
+        <td><span class="tag ${c.alDia ? 'ok' : 'mal'}">${c.alDia ? 'Al día' : 'Vencida'}</span></td>
+        <td><button class="ok" onclick="pago(${c.id})">Registrar pago</button>
+        <a class="btn" style="background:#22c55e" target="_blank" href="${wa(c, msj)}">WhatsApp</a>
+        <button class="sec" onclick="editar(${c.id})">Editar</button>
+        <button class="mal" onclick="borrar(${c.id})">Borrar</button></td></tr>`;
+    }).join('') || '<tr><td colspan="7">Sin socios</td></tr>';
+}
+function limpiar() {
+  editId = null; ['dni', 'nombre', 'apellido', 'celular'].forEach(i => $(i).value = '');
+  $('formTitulo').textContent = 'Alta de socio'; $('cancelar').classList.add('hidden'); $('msg').textContent = '';
+}
+function editar(id) {
+  const c = clientes.find(x => x.id === id); editId = id;
+  ['dni', 'nombre', 'apellido', 'celular'].forEach(i => $(i).value = c[i]);
+  $('formTitulo').textContent = 'Editar socio'; $('cancelar').classList.remove('hidden');
+  window.scrollTo({ top: 0, behavior: 'smooth' });
+}
+async function guardar() {
+  const body = { dni: $('dni').value, nombre: $('nombre').value, apellido: $('apellido').value, celular: $('celular').value };
+  const d = editId ? await api('/api/clientes/' + editId, 'PUT', body) : await api('/api/clientes', 'POST', body);
+  if (d.error) return $('msg').textContent = d.error;
+  limpiar(); cargar();
+}
+async function pago(id) { await api(`/api/clientes/${id}/pago`, 'POST'); cargar(); }
+async function borrar(id) {
+  if (confirm('¿Eliminar este socio y su historial de asistencias?')) { await api('/api/clientes/' + id, 'DELETE'); cargar(); }
+}
+
+async function cargarStats() {
+  const s = await api('/api/estadisticas');
+  $('sHoy').textContent = s.ingresosHoy; $('sMes').textContent = s.ingresosMes; $('sUnicos').textContent = s.sociosUnicos;
+  const max = Math.max(1, ...s.horasPico.map(h => h.ingresos));
+  $('pico').innerHTML = s.horasPico.map(h => `<div class="barra"><span style="width:60px">${h.hora}:00 hs</span>
+    <span class="b" style="width:${(h.ingresos / max) * 70}%"></span> ${h.ingresos}</div>`).join('') || 'Aún no hay ingresos registrados.';
+  $('inactivos').innerHTML = s.inactivos.map(c => `<tr><td>${esc(c.apellido)}, ${esc(c.nombre)}</td><td>${fecha(c.ultimo)}</td>
+    <td><a class="btn" style="background:#22c55e" target="_blank" href="${wa(c, `Hola ${c.nombre}! Hace tiempo que no te vemos por el gimnasio. ¡Te esperamos!`)}">WhatsApp</a></td></tr>`).join('')
+    || '<tr><td colspan="3">No hay socios inactivos</td></tr>';
+  $('frecuencia').innerHTML = s.frecuencia.map(f => `<tr><td>${esc(f.apellido)}, ${esc(f.nombre)}</td><td>${f.visitasMes}</td><td>${f.porSemana}</td></tr>`).join('');
+}
+async function crearAdmin() {
+  const d = await api('/api/auth/registro', 'POST', { usuario: $('nuevoUsuario').value, password: $('nuevoPass').value });
+  $('msgAdmin').textContent = d.ok ? '✅ Administrador creado' : d.error;
+  if (d.ok) { $('nuevoUsuario').value = ''; $('nuevoPass').value = ''; }
+}
+api('/api/auth/estado').then(e => e.logueado ? cargar() : location.href = 'login.html');
+</script></body></html>

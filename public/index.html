@@ -1,0 +1,43 @@
+<!DOCTYPE html>
+<html lang="es"><head><meta charset="UTF-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+<title>GymControl - Recepción</title><link rel="stylesheet" href="style.css"></head>
+<body>
+<header><h1>🏋️ GymControl</h1><a href="login.html">Administración</a></header>
+<div class="centro card">
+  <h2>Ingresá tu DNI</h2>
+  <input id="dni" inputmode="numeric" maxlength="10" placeholder="DNI sin puntos" autofocus>
+  <button id="btn">Consultar</button>
+  <div id="resultado" class="hidden"></div>
+</div>
+<script>
+const dni = document.getElementById('dni'), res = document.getElementById('resultado');
+let timer, ctx;
+function sonido(ok) {
+  ctx = ctx || new (window.AudioContext || window.webkitAudioContext)();
+  const notas = ok ? [[660, 0], [880, .15]] : [[220, 0], [160, .25]];
+  notas.forEach(([f, t]) => {
+    const o = ctx.createOscillator(), g = ctx.createGain();
+    o.type = ok ? 'sine' : 'sawtooth'; o.frequency.value = f;
+    g.gain.setValueAtTime(.25, ctx.currentTime + t);
+    g.gain.exponentialRampToValueAtTime(.001, ctx.currentTime + t + .3);
+    o.connect(g); g.connect(ctx.destination); o.start(ctx.currentTime + t); o.stop(ctx.currentTime + t + .3);
+  });
+}
+const fecha = iso => iso.split('-').reverse().join('/');
+async function consultar() {
+  const r = await fetch('/api/consulta', { method: 'POST', headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ dni: dni.value }) });
+  const d = await r.json();
+  res.className = d.acceso ? 'ok' : 'mal';
+  res.innerHTML = d.existe
+    ? `<h2>${d.acceso ? '✅ Acceso permitido' : '⛔ Acceso denegado'}</h2><p><b>${d.nombre}</b></p>
+       <p>Estado de cuota: <b>${d.estado}</b></p><p>Último pago: ${fecha(d.ultimoPago)}</p>
+       <p>Próximo vencimiento: ${fecha(d.vencimiento)}</p>`
+    : `<h2>⛔ Acceso no permitido</h2><p>${d.mensaje}</p>`;
+  sonido(d.acceso);
+  clearTimeout(timer);
+  timer = setTimeout(() => { res.className = 'hidden'; dni.value = ''; dni.focus(); }, 8000);
+}
+document.getElementById('btn').onclick = consultar;
+dni.addEventListener('keydown', e => e.key === 'Enter' && consultar());
+</script></body></html>
